@@ -20,7 +20,11 @@ def register():
     salt = bcrypt.gensalt()
     encrypted_password = bcrypt.hashpw(password.encode("utf-8"), salt)
 
-    register_user(first_name, last_name, email, encrypted_password)
+    try:
+        register_user(first_name, last_name, email, encrypted_password)
+    except Exception as e:
+        response = {"message": str(e)}
+        return make_response(jsonify(response), 409)
 
     response = {"message": "User created"}
     return make_response(jsonify(response), 201)

@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from demo import db
 
 
@@ -20,6 +22,9 @@ def register_user(first_name, last_name, email, encrypted_password):
         new_user = User(first_name, last_name, email, encrypted_password)
         db.session.add(new_user)
         db.session.commit()
+    except IntegrityError as e:
+        print("Exception Occurred when adding User data")
+        raise Exception("User already exist")
     except Exception as e:
         print("Exception Occurred when adding User data")
         raise Exception("Can't add user data")
