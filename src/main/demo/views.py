@@ -1,4 +1,5 @@
 import bcrypt as bcrypt
+from dashx_python import client as dashx
 from flask import request, jsonify, make_response
 from flask_expects_json import expects_json
 
@@ -24,6 +25,8 @@ def register():
         register_user(first_name, last_name, email, encrypted_password)
     except Exception as e:
         response = {"message": str(e)}
+        dashx.client.identify(first_name, last_name, email)
+        dashx.client.track('User Registered', {"first_name": first_name, "last_name": last_name, "email": email})
         return make_response(jsonify(response), 409)
 
     response = {"message": "User created"}
@@ -32,3 +35,4 @@ def register():
     #     print("match")
     # else:
     #     print("does not match")
+
