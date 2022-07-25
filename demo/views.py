@@ -1,11 +1,11 @@
 import bcrypt as bcrypt
-# from dashx_python import client as dashx
+from dashx_python import client as dashx
 from flask import request, jsonify, make_response
 
 from demo import app, db_engine
 
 
-@app.route('/register', methods=["POST"])
+@app.route('/register', methods=['POST'])
 def register():
     req_body = request.get_json()
     if 'first_name' not in req_body or\
@@ -19,17 +19,18 @@ def register():
     password = req_body.get('password')
 
     salt = bcrypt.gensalt()
-    encrypted_password = bcrypt.hashpw(password.encode("utf-8"), salt)
+    encrypted_password = bcrypt.hashpw(password.encode('utf-8'), salt)
 
     try:
         with db_engine.connect() as conn:
-            rs = conn.execute('SELECT * FROM users')
+            rs = conn.execute('INSERT INTO users (first_name, last_name, email, encrypted_password) '
+                              'VALUES ({}, {}, {}, {}) RETURNING *'.format(first_name, last_name, email,
+                                                                           encrypted_password))
 
-            for row in rs:
-                print(row)
-            return make_response(jsonify({'status': 'success'}), 200)
+        user_data = {'first_name': first_name, 'last_name': last_name, 'email': email}
         dashx.client.identify(first_name, last_name, email)
-        dashx.client.track('User Registered', {"first_name": first_name, "last_name": last_name, "email": email})
+        dashx.client.track('User Registered', )
+        return make_response(jsonify({'status': 'success'}), 200)
     # except OperationalError as e:
     #     response = {'message': 'Internal Server Error.'}
     #     return make_response(jsonify(response), 500)
@@ -37,7 +38,7 @@ def register():
         response = {'message': 'User already exists.'}
         return make_response(jsonify(response), 409)
 
-    response = {"message": "User created."}
+    response = {'message': 'User created.'}
     return make_response(jsonify(response), 201)
     # if bcrypt.checkpw(password, encrypted_password):
     #     print("match")
