@@ -1,18 +1,18 @@
 import bcrypt as bcrypt
-from dashx_python import client as dashx
+# from dashx_python import client as dashx
 from flask import request, jsonify, make_response
-from flask_expects_json import expects_json
 
-from src.main.demo.demo import app
-from src.main.demo.model import register_user
-from src.main.demo.schema import REGISTER_SCHEMA
+from demo import app, db_engine
 
 
 @app.route('/register', methods=["POST"])
-@expects_json(REGISTER_SCHEMA)
 def register():
-    print("register API called")
     req_body = request.get_json()
+    if 'first_name' not in req_body or\
+            'last_name' not in req_body or\
+            'email' not in req_body or\
+            'password' not in req_body:
+        return make_response(jsonify({'message': 'All fields are required.'}), 422)
     first_name = req_body.get('first_name')
     last_name = req_body.get('last_name')
     email = req_body.get('email')
@@ -22,17 +22,24 @@ def register():
     encrypted_password = bcrypt.hashpw(password.encode("utf-8"), salt)
 
     try:
-        register_user(first_name, last_name, email, encrypted_password)
-    except Exception as e:
-        response = {"message": str(e)}
+        with db_engine.connect() as conn:
+            rs = conn.execute('SELECT * FROM users')
+
+            for row in rs:
+                print(row)
+            return make_response(jsonify({'status': 'success'}), 200)
         dashx.client.identify(first_name, last_name, email)
         dashx.client.track('User Registered', {"first_name": first_name, "last_name": last_name, "email": email})
+    # except OperationalError as e:
+    #     response = {'message': 'Internal Server Error.'}
+    #     return make_response(jsonify(response), 500)
+    except Exception as e:
+        response = {'message': 'User already exists.'}
         return make_response(jsonify(response), 409)
 
-    response = {"message": "User created"}
+    response = {"message": "User created."}
     return make_response(jsonify(response), 201)
     # if bcrypt.checkpw(password, encrypted_password):
     #     print("match")
     # else:
     #     print("does not match")
-
