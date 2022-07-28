@@ -73,3 +73,39 @@ def forgot_password():
 
     except Exception as e:
         return make_response(jsonify({'message': str(e)}), 500)
+
+
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    req_body = request.get_json()
+    if 'token' not in req_body:
+        return make_response(jsonify({'message': 'Token is required.'}), 400)
+
+    if 'password' not in req_body:
+        return make_response(jsonify({'message': 'Password is required.'}), 400)
+
+    token = req_body.get('token')
+    password = req_body.get('password')
+
+    try:
+        decoded_token = jwt.decode(token, os.environ.get('JWT_SECRET'), algorithms=['HS256'])
+        email = decoded_token.get('email')
+
+        salt = bcrypt.gensalt()
+        encrypted_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+
+        with db_engine.connect() as conn:
+            rs = conn.execute('UPDATE users SET encrypted_password = %s WHERE email = %s RETURNING id',
+                              encrypted_password.decode('ascii'), email)
+            user = rs.fetchone()
+
+        if len(user) == 0:
+            return make_response(jsonify({'message': 'Invalid reset password link.'}), 422)
+
+        return make_response(jsonify({'message': 'You have successfully reset your password.'}), 200)
+
+    except jwt.exceptions.ExpiredSignatureError as e:
+        return make_response(jsonify({'message': 'Your reset password link has expired.'}), 422)
+
+    except Exception as e:
+        return make_response(jsonify({'message': str(e)}), 500)
