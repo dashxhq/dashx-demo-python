@@ -28,7 +28,7 @@ def register():
                               'VALUES (%s, %s, %s, %s) RETURNING *', first_name, last_name, email,
                               encrypted_password.decode('ascii'))
             user = rs.fetchone()
-        user_data = {'first_name': user['first_name'], 'last_name': user['last_name'], 'email': user['email']}
+        user_data = {'firstName': user['first_name'], 'lastName': user['last_name'], 'email': user['email']}
         dashx.client.identify(user['id'], user_data)
         dashx.client.track('User Registered', user['id'], user_data)
         return make_response(jsonify({'message': 'User created.'}), 201)
