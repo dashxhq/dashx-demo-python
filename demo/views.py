@@ -1,5 +1,10 @@
+import datetime
+import os
+from datetime import timezone
+
 import bcrypt as bcrypt
 from dashx_python import client as dashx
+import jwt
 import sqlalchemy.exc as sqlalchemy_exc
 from flask import request, jsonify, make_response
 
@@ -37,3 +42,34 @@ def register():
     except Exception as e:
         response = {'message': 'Internal Server Error.'}
         return make_response(jsonify(response), 500)
+
+
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    req_body = request.get_json()
+    if 'email' not in req_body:
+        return make_response(jsonify({'message': 'Email is required.'}), 400)
+
+    email = req_body.get('email')
+    try:
+        with db_engine.connect() as conn:
+            user_rs = conn.execute('SELECT * FROM users WHERE email = %s', email)
+            user = user_rs.fetchone()
+
+        if len(user) == 0:
+            return make_response(jsonify({'message': 'This email does not exist in our records.'}), 404)
+
+        token = jwt.encode(
+            {"exp": datetime.datetime.now(tz=timezone.utc) + datetime.timedelta(seconds=900), 'email': email},
+            os.environ.get('JWT_SECRET'), algorithm="HS256"
+        )
+
+        dashx.client.deliver('email/forgot-password', {
+            'to': email,
+            'data': {'token': token.decode('ascii')}
+        })
+
+        return make_response(jsonify({'message': 'Check your inbox for a link to reset your password.'}), 200)
+
+    except Exception as e:
+        return make_response(jsonify({'message': str(e)}), 500)
