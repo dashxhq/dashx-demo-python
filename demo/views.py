@@ -109,3 +109,44 @@ def reset_password():
 
     except Exception as e:
         return make_response(jsonify({'message': str(e)}), 500)
+
+
+@app.route('/contact', methods=['POST'])
+def contact():
+    req_body = request.get_json()
+    if 'name' not in req_body or\
+            'email' not in req_body or\
+            'feedback' not in req_body:
+        return make_response(jsonify({'message': 'All fields are required.'}), 422)
+    name = req_body.get('name')
+    email = req_body.get('email')
+    feedback = req_body.get('feedback')
+
+    try:
+        dashx.client.deliver('email', {
+          'content': {
+            'name': 'Contact us',
+            'from': 'noreply@dashxdemo.com',
+            'to': [email, 'sales@dashx.com'],
+            'subject': 'Contact Us Form',
+            'html_body': '''<mjml>
+                <mj-body>
+                  <mj-section>
+                    <mj-column>
+                      <mj-divider border-color="#F45E43"></mj-divider>
+                      <mj-text>Thanks for reaching out! We will get back to you soon!</mj-text>
+                      <mj-text>Your feedback: </mj-text>
+                      <mj-text>Name: {name}</mj-text>
+                      <mj-text>Email: {email}</mj-text>
+                      <mj-text>Feedback: {feedback}</mj-text>
+                      <mj-divider border-color="#F45E43"></mj-divider>
+                    </mj-column>
+                  </mj-section>
+                </mj-body>
+              </mjml>'''.format(name=name, email=email, feedback=feedback)
+          }
+        })
+
+        return make_response(jsonify({'message': 'Thanks for reaching out! We will get back to you soon.'}), 200)
+    except:
+        return make_response(jsonify({'message': 'Internal Server Error.'}), 500)
