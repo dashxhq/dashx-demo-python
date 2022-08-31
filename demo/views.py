@@ -150,3 +150,37 @@ def contact():
         return make_response(jsonify({'message': 'Thanks for reaching out! We will get back to you soon.'}), 200)
     except:
         return make_response(jsonify({'message': 'Internal Server Error.'}), 500)
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    req_body = request.get_json()
+    if 'email' not in req_body or\
+            'password' not in req_body:
+        return make_response(jsonify({'message': 'Incorrect email or password.'}), 401)
+    email = req_body.get('email')
+    password = req_body.get('password')
+
+    try:
+        with db_engine.connect() as conn:
+            user_rs = conn.execute('SELECT * FROM users WHERE email = %s', email)
+            user = user_rs.fetchone()
+
+        if len(user) == 0:
+            return make_response(jsonify({'message': 'Incorrect email or password.'}), 401)
+
+        if not bcrypt.checkpw(password.encode('utf-8'), user['encrypted_password'].encode('utf-8')):
+            return make_response(jsonify({'message': 'Incorrect email or password.'}), 401)
+
+        token = jwt.encode(
+            {"exp": datetime.datetime.now(tz=timezone.utc) + datetime.timedelta(seconds=86400*30),
+             'id': user['id'], 'email': user['email'], 'first_name': user['first_name'],
+             'last_name': user['last_name'],
+             'dashx_token': dashx.client.generateIdentityToken(user['id'])},
+            os.environ.get('JWT_SECRET'), algorithm="HS256"
+        )
+
+        return make_response(jsonify({'message': 'User logged in.', 'token': token.decode('ascii')}), 200)
+
+    except Exception as e:
+        return make_response(jsonify({'message': str(e)}), 500)
